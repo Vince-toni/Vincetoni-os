@@ -8,8 +8,8 @@ The core idea is simple:
 
 ```text
              ┌──────────────────────┐
-             │      VINCETONI       │
-             │      AI AGENT        │
+             │      VINCETONI           │
+             │      AI AGENT            │
              └──────────┬───────────┘
                         │
                  ┌──────▼──────┐
