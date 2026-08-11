@@ -1,0 +1,13 @@
+# Environment
+.venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs / data
+Data.json
+
+# Editor
+.vscode/
