@@ -81,7 +81,6 @@ async def chat(request: ChatRequest):
     save_data({
         "message": request.message,
         "id": conversations[request.conversation_id],
-        "conversations": conversations,
         "reply": reply,
         "model": data.get("model"),
         "tokens_used": usage.get("total_tokens"),
