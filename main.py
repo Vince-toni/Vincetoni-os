@@ -5,6 +5,7 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
+from Database.crud import get_or_create_users
 
 load_dotenv()
 app = FastAPI()
@@ -16,6 +17,9 @@ conversations = {}
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str
+    platform: str
+    platform_user_id: str
+    display_name: str | None = None
 
 
 @app.get('/')
@@ -46,6 +50,11 @@ def save_data(entry: dict):
 
 @app.post('/v1/chat')
 async def chat(request: ChatRequest):
+    user = await get_or_create_users(
+        platform= request.platform,
+        platform_user_id=request.platform_user_id,
+        display_name=request.display_name,
+    )
     api_key = os.getenv('OPENROUTER_API')
 
     if request.conversation_id not in conversations:

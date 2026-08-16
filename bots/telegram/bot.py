@@ -40,7 +40,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 API_URL,
-                json={"message": user_message, "conversation_id": chat_id}
+                json={"message": user_message,
+                      "conversation_id": chat_id,
+                      "platform": "telegram",
+                      "platform_user_id": str(update.effective_user.id),
+                      "display_name": update.effective_user.first_name,
+                       }
             )
         data = response.json()
         reply = data.get("reply", "Something went wrong on the server side.")
