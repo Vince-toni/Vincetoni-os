@@ -1,16 +1,28 @@
 import os
 import json
 import httpx
-from uuid import uuid4
+import inspect
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from Database.crud import get_or_create_users
-from tools.definitions import TOOL_DEFINITION
+
+from database.crud import get_or_create_user
+from tools.definitions import TOOL_DEFINITIONS
 from tools.registry import TOOL_REGISTRY
+
+
 
 load_dotenv()
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # your Vite dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 FILE_NAME = 'Data.json'
 conversations = {}
@@ -19,8 +31,8 @@ conversations = {}
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str
-    platform: str
-    platform_user_id: str
+    platform: str | None = None
+    platform_user_id: str | None = None
     display_name: str | None = None
 
 
@@ -52,11 +64,15 @@ def save_data(entry: dict):
 
 @app.post('/v1/chat')
 async def chat(request: ChatRequest):
-    user = await get_or_create_users(
-        platform= request.platform,
+    if not request.platform or not request.platform_user_id:
+        return {"error": "platform and platform_user_id are required."}
+
+    user = await get_or_create_user(
+        platform=request.platform,
         platform_user_id=request.platform_user_id,
         display_name=request.display_name,
     )
+
     api_key = os.getenv('OPENROUTER_API')
 
     if request.conversation_id not in conversations:
@@ -66,14 +82,14 @@ async def chat(request: ChatRequest):
         {"role": "user", "content": request.message}
     )
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
                 "model": 'meta-llama/llama-3.3-70b-instruct',
                 "messages": conversations[request.conversation_id],
-                "tools": TOOL_DEFINITION,
+                "tools": TOOL_DEFINITIONS,
             }
         )
 
@@ -82,7 +98,7 @@ async def chat(request: ChatRequest):
         return {"error": data["error"]["message"]}
 
     message = data["choices"][0]["message"]
-    tool_calls = message.get("tool_calls") or message.get("tool_call") or []
+    tool_calls = message.get("tool_calls") or []
 
     if tool_calls:
         conversations[request.conversation_id].append(message)
@@ -92,23 +108,23 @@ async def chat(request: ChatRequest):
             tool_name = function_data.get("name")
             raw_arguments = function_data.get("arguments", "{}")
 
-            if isinstance(raw_arguments, str):
-                try:
-                    arguments = json.loads(raw_arguments)
-                except json.JSONDecodeError:
-                    arguments = {}
-            else:
-                arguments = raw_arguments or {}
+            try:
+                arguments = json.loads(raw_arguments) if isinstance(raw_arguments, str) else (raw_arguments or {})
+            except json.JSONDecodeError:
+                arguments = {}
 
-            print(f"[TOOL CALL]{tool_name}({arguments})")
+            print(f"[TOOL CALL] {tool_name}({arguments})")
 
             tool_function = TOOL_REGISTRY.get(tool_name)
+
             if tool_function is None:
-                result = {"error": f"Tool not found: {tool_name}"}
+                result = {"error": f"Unknown tool: {tool_name}"}
+            elif inspect.iscoroutinefunction(tool_function):
+                result = await tool_function(**arguments)
             else:
                 result = tool_function(**arguments)
 
-            print(f"[TOOL RESULT]{result}")
+            print(f"[TOOL RESULT] {result}")
 
             conversations[request.conversation_id].append({
                 "role": "tool",
@@ -117,30 +133,28 @@ async def chat(request: ChatRequest):
                 "content": json.dumps(result),
             })
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": 'meta-llama/llama-3.3-70b-instruct',
-                "messages": conversations[request.conversation_id],
-                "tools": TOOL_DEFINITION,
-            }
-        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": 'meta-llama/llama-3.3-70b-instruct',
+                    "messages": conversations[request.conversation_id],
+                }
+            )
         data = response.json()
-        print("RAW RESPONSE", json.dumps(data, indent=2))
         message = data["choices"][0]["message"]
 
-    reply = message['content']
-    conversations[request.conversation_id].append({"role":"assistant", "content":reply})
+    reply = message["content"]
+    conversations[request.conversation_id].append({"role": "assistant", "content": reply})
 
-
-       
     usage = data.get("usage", {})
 
     save_data({
+        "user_id": str(user.id),
+        "platform": request.platform,
+        "conversation_id": request.conversation_id,
         "message": request.message,
-        "id": conversations[request.conversation_id],
         "reply": reply,
         "model": data.get("model"),
         "tokens_used": usage.get("total_tokens"),

@@ -1,8 +1,9 @@
 from sqlalchemy import select
-from Database.connection import async_session
-from Database.models import User,PlatformIdentity
+from database.connection import async_session
+from database.models import User, PlatformIdentity
 
-async def get_or_create_users(
+
+async def get_or_create_user(
     platform: str,
     platform_user_id: str,
     display_name: str | None = None,
@@ -17,7 +18,7 @@ async def get_or_create_users(
         identity = result.scalar_one_or_none()
 
         if identity:
-            result =  await session.execute(select(User).where(User.id == identity.user_id))
+            result = await session.execute(select(User).where(User.id == identity.user_id))
             return result.scalar_one()
 
         user = User(display_name=display_name)
@@ -25,11 +26,26 @@ async def get_or_create_users(
         await session.flush()
 
         identity = PlatformIdentity(
-            user_id = user.id,
-            platform = platform,
-            platform_user_id = platform_user_id,
+            user_id=user.id,
+            platform=platform,
+            platform_user_id=platform_user_id,
         )
         session.add(identity)
 
         await session.commit()
         return user
+
+
+async def get_or_create_users(
+    platform: str,
+    platform_user_id: str,
+    display_name: str | None = None,
+) -> User:
+    return await get_or_create_user(
+        platform=platform,
+        platform_user_id=platform_user_id,
+        display_name=display_name,
+    )
+
+
+__all__ = ["get_or_create_user", "get_or_create_users"]

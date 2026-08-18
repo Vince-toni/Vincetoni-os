@@ -35,33 +35,33 @@ The first goal is to build a reliable **VINCETONI Assistant API** that every bot
 
 VINCETONI should eventually be capable of:
 
-* AI conversations
-* Persistent memory
-* Web research
-* Search
-* GitHub management
-* Reading repositories
-* Reading commits
-* Creating issues
-* Creating branches
-* Creating pull requests
-* Running code
-* Running tests
-* Editing files
-* Image processing
-* Image hosting
-* GIF conversion
-* Video processing
-* Sticker creation
-* WhatsApp integration
-* Telegram integration
-* Discord integration
-* YouTube integrations
-* Scheduled automation
-* Multi-agent workflows
-* Coding-agent capabilities
-* API creation
-* Custom plugins/tools
+- AI conversations
+- Persistent memory
+- Web research
+- Search
+- GitHub management
+- Reading repositories
+- Reading commits
+- Creating issues
+- Creating branches
+- Creating pull requests
+- Running code
+- Running tests
+- Editing files
+- Image processing
+- Image hosting
+- GIF conversion
+- Video processing
+- Sticker creation
+- WhatsApp integration
+- Telegram integration
+- Discord integration
+- YouTube integrations
+- Scheduled automation
+- Multi-agent workflows
+- Coding-agent capabilities
+- API creation
+- Custom plugins/tools
 
 The important design principle is:
 
@@ -101,15 +101,15 @@ Model
 
 Features:
 
-* API authentication
-* Chat endpoint
-* Conversation IDs
-* Message history
-* Model selection
-* Streaming responses
-* Error handling
-* Logging
-* Basic rate limiting
+- API authentication
+- Chat endpoint
+- Conversation IDs
+- Message history
+- Model selection
+- Streaming responses
+- Error handling
+- Logging
+- Basic rate limiting
 
 Example:
 
@@ -169,9 +169,9 @@ Vector Database
 
 Potential vector options:
 
-* pgvector
-* Qdrant
-* Weaviate
+- pgvector
+- Qdrant
+- Weaviate
 
 Do not over-engineer memory initially.
 
@@ -466,21 +466,21 @@ The recommended architecture is:
 
 Express can handle:
 
-* Authentication
-* API gateway
-* WebSocket connections
-* Public API
-* Request routing
-* Bot integrations
+- Authentication
+- API gateway
+- WebSocket connections
+- Public API
+- Request routing
+- Bot integrations
 
 Python can handle:
 
-* AI agents
-* Tool execution
-* Automation
-* Media processing
-* AI workflows
-* Background workers
+- AI agents
+- Tool execution
+- Automation
+- Media processing
+- AI workflows
+- Background workers
 
 ---
 
@@ -1293,24 +1293,24 @@ These rules should be treated as core architecture, not optional features.
 
 ### Never:
 
-* Commit API keys
-* Store secrets in source code
-* Give the agent unlimited terminal access
-* Allow unrestricted filesystem access
-* Automatically execute destructive commands
-* Trust arbitrary tool arguments
-* Allow plugins to silently escalate permissions
+- Commit API keys
+- Store secrets in source code
+- Give the agent unlimited terminal access
+- Allow unrestricted filesystem access
+- Automatically execute destructive commands
+- Trust arbitrary tool arguments
+- Allow plugins to silently escalate permissions
 
 ### Always:
 
-* Validate inputs
-* Authenticate API requests
-* Log tool calls
-* Rate-limit public endpoints
-* Sandbox code execution
-* Restrict filesystem access
-* Add permission checks
-* Require confirmation for dangerous operations
+- Validate inputs
+- Authenticate API requests
+- Log tool calls
+- Rate-limit public endpoints
+- Sandbox code execution
+- Restrict filesystem access
+- Add permission checks
+- Require confirmation for dangerous operations
 
 ---
 
