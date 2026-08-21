@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Export root folder so Python finds 'database' and other modules
-export PYTHONPATH=.
+# Force Python path to the absolute source directory
+export PYTHONPATH=/opt/render/project/src
 
-# Start Telegram Bot in the background
-python bots/telegram/bot.py &
+# Start Telegram Bot
+python /opt/render/project/src/bots/telegram/bot.py &
 
-# Start Discord Bot in the background
-python bots/discord/bot.py &
+# Start Discord Bot
+python /opt/render/project/src/bots/discord/bot.py &
 
-# Start FastAPI server in the foreground
-uvicorn main:app --host 0.0.0.0 --port $PORT
+# Start FastAPI/Uvicorn
+/opt/render/project/src/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port $PORT
