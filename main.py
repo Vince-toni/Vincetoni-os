@@ -1,4 +1,9 @@
+import sys
 import os
+
+# Dynamically force project root into Python search path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import json
 import httpx
 import inspect
@@ -7,11 +12,10 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# Internal imports now work safely regardless of working directory
 from database.crud import get_or_create_user
 from tools.definitions import TOOL_DEFINITIONS
 from tools.registry import TOOL_REGISTRY
-
-
 
 load_dotenv()
 app = FastAPI()
