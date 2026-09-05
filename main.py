@@ -82,6 +82,8 @@ async def chat(request: ChatRequest):
     )
 
     api_key = os.getenv('OPENROUTER_API')
+    if not api_key:
+        return {"error": "OPENROUTER_API is not configured on the server."}
 
     if request.conversation_id not in conversations:
         conversations[request.conversation_id] = [

@@ -71,7 +71,13 @@ async def on_message(message: discord.Message):
                     }
                 )
             data = response.json()
-            reply = data.get("reply", "Something went wrong on the server side.")
+            reply = data.get("reply")
+            if not reply:
+                error = data.get("error")
+                if isinstance(error, dict):
+                    error = error.get("message")
+                reply = str(error or f"API returned HTTP {response.status_code} without a reply.")
+                print(f"[API ERROR] status={response.status_code} error={reply}")
 
         except httpx.TimeoutException:
             print("[ERROR] Request to our own API timed out")
@@ -79,11 +85,11 @@ async def on_message(message: discord.Message):
 
         except httpx.HTTPError as e:
             print(f"[ERROR] HTTP error talking to our API: {e}")
-            reply = "Something went wrong reaching my brain, try again."
+            reply = "I could not reach the server. Check the server logs and try again."
 
         except Exception as e:
             print(f"[ERROR] Unexpected error: {e}")
-            reply = "Something unexpected broke. I've logged it."
+            reply = f"The server returned an unexpected response: {e}"
 
     print(f"[REPLY] {reply!r}")
 
