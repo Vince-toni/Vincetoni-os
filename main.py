@@ -19,9 +19,6 @@ from tools.registry import TOOL_REGISTRY
 from system_prompt import VINCETONI_SYSTEM_PROMPT
 from models import get_model
 
-selected_model = get_model(request.model)
-# then use "model": selected_model in both API calls
-
 load_dotenv()
 app = FastAPI()
 
@@ -75,6 +72,8 @@ def save_data(entry: dict):
 async def chat(request: ChatRequest):
     if not request.platform or not request.platform_user_id:
         return {"error": "platform and platform_user_id are required."}
+
+    selected_model = get_model(request.model)
 
     user = await get_or_create_user(
         platform=request.platform,
