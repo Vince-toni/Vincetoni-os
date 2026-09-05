@@ -39,7 +39,7 @@ class ChatRequest(BaseModel):
     platform: str | None = None
     platform_user_id: str | None = None
     display_name: str | None = None
-    model: str = "default"
+    model: str = "coding"
 
 
 @app.get('/')
