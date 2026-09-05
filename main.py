@@ -86,7 +86,7 @@ async def chat(request: ChatRequest):
 
     if request.conversation_id not in conversations:
         conversations[request.conversation_id] = [
-            {"role": "system" "content": VINCETONI_SYSTEM_PROMPT}
+            {"role": "system", "content": VINCETONI_SYSTEM_PROMPT}
         ]
 
     conversations[request.conversation_id].append(
