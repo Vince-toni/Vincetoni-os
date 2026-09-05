@@ -16,6 +16,11 @@ from pydantic import BaseModel
 from database.crud import get_or_create_user
 from tools.definitions import TOOL_DEFINITIONS
 from tools.registry import TOOL_REGISTRY
+from system_prompt import VINCETONI_SYSTEM_PROMPT
+from models import get_model
+
+selected_model = get_model(request.model)
+# then use "model": selected_model in both API calls
 
 load_dotenv()
 app = FastAPI()
@@ -31,13 +36,13 @@ app.add_middleware(
 FILE_NAME = 'Data.json'
 conversations = {}
 
-
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str
     platform: str | None = None
     platform_user_id: str | None = None
     display_name: str | None = None
+    model: str = "default"
 
 
 @app.get('/')
@@ -80,7 +85,9 @@ async def chat(request: ChatRequest):
     api_key = os.getenv('OPENROUTER_API')
 
     if request.conversation_id not in conversations:
-        conversations[request.conversation_id] = []
+        conversations[request.conversation_id] = [
+            {"role": "system" "content": VINCETONI_SYSTEM_PROMPT}
+        ]
 
     conversations[request.conversation_id].append(
         {"role": "user", "content": request.message}
@@ -91,7 +98,7 @@ async def chat(request: ChatRequest):
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
-                "model": 'meta-llama/llama-3.3-70b-instruct',
+                "model": selected_model,
                 "messages": conversations[request.conversation_id],
                 "tools": TOOL_DEFINITIONS,
             }
@@ -142,7 +149,7 @@ async def chat(request: ChatRequest):
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": 'meta-llama/llama-3.3-70b-instruct',
+                    "model": selected_model,
                     "messages": conversations[request.conversation_id],
                 }
             )
