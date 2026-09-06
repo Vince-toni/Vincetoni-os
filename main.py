@@ -81,10 +81,6 @@ async def chat(request: ChatRequest):
         display_name=request.display_name,
     )
 
-    api_key = os.getenv('OPENROUTER_API')
-    if not api_key:
-        return {"error": "OPENROUTER_API is not configured on the server."}
-
     if request.conversation_id not in conversations:
         conversations[request.conversation_id] = [
             {"role": "system", "content": VINCETONI_SYSTEM_PROMPT}
@@ -96,10 +92,10 @@ async def chat(request: ChatRequest):
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}"},
+            selected_model["base_url"],
+            headers={"Authorization": f"Bearer {selected_model['api_key']}"},
             json={
-                "model": selected_model,
+                "model": selected_model["model"],
                 "messages": conversations[request.conversation_id],
                 "tools": TOOL_DEFINITIONS,
             }
@@ -147,11 +143,12 @@ async def chat(request: ChatRequest):
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
+                selected_model["base_url"],
+                headers={"Authorization": f"Bearer {selected_model['api_key']}"},
                 json={
-                    "model": selected_model,
+                    "model": selected_model["model"],
                     "messages": conversations[request.conversation_id],
+                    "tools": TOOL_DEFINITIONS,
                 }
             )
         data = response.json()

@@ -2,6 +2,7 @@
 .venv/
 .env
 vincetoni-os/
+.VT/
 
 # Python
 __pycache__/
