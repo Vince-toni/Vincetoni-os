@@ -14,17 +14,33 @@ from pydantic import BaseModel
 
 # Internal imports now work safely regardless of working directory
 from database.crud import get_or_create_user
-from tools.definitions import TOOL_DEFINITIONS
-from tools.registry import TOOL_REGISTRY
+from tools.definitions import LOCAL_TOOL_DEFINITIONS
+from tools.registry import LOCAL_TOOL_REGISTRY 
 from system_prompt import VINCETONI_SYSTEM_PROMPT
 from models import get_model
+from contextlib import asynccontextmanager
+from mcp_client import mcp_tool_definitions, call_mcp_tool, start_mcp, stop_mcp
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await start_mcp()
+    yield
+    await stop_mcp()
+
 
 load_dotenv()
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
+
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # your Vite dev server
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -90,25 +106,30 @@ async def chat(request: ChatRequest):
         {"role": "user", "content": request.message}
     )
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            selected_model["base_url"],
-            headers={"Authorization": f"Bearer {selected_model['api_key']}"},
-            json={
-                "model": selected_model["model"],
-                "messages": conversations[request.conversation_id],
-                "tools": TOOL_DEFINITIONS,
-            }
-        )
+    max_iterations = 5
+    events = []
+    for _ in range(max_iterations):
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                selected_model["base_url"],
+                headers={"Authorization": f"Bearer {selected_model['api_key']}"},
+                json={
+                    "model": selected_model["model"],
+                    "messages": conversations[request.conversation_id],
+                    "tools": mcp_tool_definitions + LOCAL_TOOL_DEFINITIONS,
+                },
+            )
 
-    data = response.json()
-    if "error" in data:
-        return {"error": data["error"]["message"]}
+        data = response.json()
+        if "error" in data:
+            return {"error": data["error"]["message"]}
 
-    message = data["choices"][0]["message"]
-    tool_calls = message.get("tool_calls") or []
+        message = data["choices"][0]["message"]
+        tool_calls = message.get("tool_calls") or []
 
-    if tool_calls:
+        if not tool_calls:
+            break  # model gave a real answer, stop looping
+
         conversations[request.conversation_id].append(message)
 
         for call in tool_calls:
@@ -117,57 +138,47 @@ async def chat(request: ChatRequest):
             raw_arguments = function_data.get("arguments", "{}")
 
             try:
-                arguments = json.loads(raw_arguments) if isinstance(raw_arguments, str) else (raw_arguments or {})
+                arguments = (
+                    json.loads(raw_arguments)
+                    if isinstance(raw_arguments, str)
+                    else (raw_arguments or {})
+                )
             except json.JSONDecodeError:
                 arguments = {}
 
             print(f"[TOOL CALL] {tool_name}({arguments})")
+            events.append({"type": "tool_call", "name": tool_name, "arguments": arguments})
 
-            tool_function = TOOL_REGISTRY.get(tool_name)
-
-            if tool_function is None:
-                result = {"error": f"Unknown tool: {tool_name}"}
-            elif inspect.iscoroutinefunction(tool_function):
-                result = await tool_function(**arguments)
+            if tool_name in LOCAL_TOOL_REGISTRY:
+                tool_function = LOCAL_TOOL_REGISTRY[tool_name]
+                if inspect.iscoroutinefunction(tool_function):
+                    result = await tool_function(**arguments)
+                else:
+                    result = tool_function(**arguments)
             else:
-                result = tool_function(**arguments)
+                result = await call_mcp_tool(tool_name, arguments)
 
-            print(f"[TOOL RESULT] {result}")
-
-            conversations[request.conversation_id].append({
-                "role": "tool",
-                "tool_call_id": call.get("id"),
-                "name": tool_name,
-                "content": json.dumps(result),
-            })
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                selected_model["base_url"],
-                headers={"Authorization": f"Bearer {selected_model['api_key']}"},
-                json={
-                    "model": selected_model["model"],
-                    "messages": conversations[request.conversation_id],
-                    "tools": TOOL_DEFINITIONS,
+            events.append({"type": "tool_result", "name": tool_name, "result": result})
+            conversations[request.conversation_id].append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call.get("id"),
+                    "name": tool_name,
+                    "content": result if isinstance(result, str) else json.dumps(result),
                 }
             )
-        data = response.json()
-        message = data["choices"][0]["message"]
 
-    reply = message["content"]
-    conversations[request.conversation_id].append({"role": "assistant", "content": reply})
-
-    usage = data.get("usage", {})
-
-    save_data({
-        "user_id": str(user.id),
-        "platform": request.platform,
-        "conversation_id": request.conversation_id,
-        "message": request.message,
-        "reply": reply,
-        "model": data.get("model"),
-        "tokens_used": usage.get("total_tokens"),
-        "cost": usage.get("cost"),
-    })
-
-    return {"reply": reply}
+    reply = message.get("content") or "I wasn't able to generate a response for that."
+    conversations[request.conversation_id].append(
+        {"role": "assistant", "content": reply}
+    )
+    save_data(
+        {
+            "conversation_id": request.conversation_id,
+            "platform": request.platform,
+            "platform_user_id": request.platform_user_id,
+            "message": request.message,
+            "reply": reply,
+        }
+    )
+    return {"reply": reply, "events": events}

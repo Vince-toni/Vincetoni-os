@@ -10,6 +10,8 @@ __pycache__/
 
 # Logs / data
 Data.json
+test.html
+test_mcp.py
 
 # Editor
 .vscode/
