@@ -40,7 +40,6 @@ PyJWT==2.13.0
 python-dotenv==1.2.2
 python-multipart==0.0.32
 python-telegram-bot==22.8
-pywin32==312
 referencing==0.37.0
 rpds-py==2026.6.3
 SQLAlchemy==2.0.52
