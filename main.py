@@ -145,7 +145,7 @@ async def chat(request: ChatRequest):
                 )
             except json.JSONDecodeError:
                 arguments = {}
-
+                
             print(f"[TOOL CALL] {tool_name}({arguments})")
             events.append({"type": "tool_call", "name": tool_name, "arguments": arguments})
 
