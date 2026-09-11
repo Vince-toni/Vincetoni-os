@@ -1,5 +1,4 @@
-# VINCETONI OS
-<h1>vincetoni</h1>
+# VINCETONI OS <p>by vincetoni-org</p>, <button>ping</button>
 
 > **An AI-powered personal agent, API gateway, automation platform, and coding agent.**
 
